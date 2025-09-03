@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spark</title>
+    <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/bananaskug/sparkvids/main/sparklogo.png">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+        }
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+        #splash-screen img {
+            width: 120px;
+        }
+        #splash-screen.hidden {
+            opacity: 0;
+        }
+
+        #app { height: 100%; width: 100%; display: flex; justify-content: center; }
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; max-width: 450px;
+            margin: 0 auto; background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px);
+            display: flex; justify-content: space-around; padding: 10px 0; height: 30px;
+            z-index: 200; border-bottom: 1px solid #333;
+        }
+        .nav-icon {
+            font-size: 28px;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .nav-icon.active {
+            font-variation-settings: 'FILL' 1;
+        }
+
+        .video-container {
+            width: 100%; max-width: 450px; position: absolute; top: 51px;
+            bottom: 0; overflow-y: scroll; scroll-snap-type: y mandatory;
+        }
+        .video-player {
+            width: 100%; height: 100%; scroll-snap-align: start; position: relative;
+            display: flex; justify-content: center; align-items: center; background-color: #000;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3); border-radius: 50%;
+            border-top: 4px solid #fff; width: 40px; height: 40px;
+            animation: spin 1s linear infinite; position: absolute;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity 0.1s;
+            /* --- MODIFICATION: Prevents the download menu on long press on mobile --- */
+            -webkit-touch-callout: none;
+        }
+        
+        video.loaded { opacity: 1; }
+        
+        .video-info {
+            position: absolute;
+            bottom: 60px;
+            right: 10px;
+            left: 10px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .video-info h3 {
+            margin: 0;
+            display: inline;
+        }
+        .video-info-title {
+             text-align: left;
+        }
+        .video-info a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .user-link {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .user-link img {
+            width: 30px; height: 30px; border-radius: 50%;
+            margin-left: 8px; border: 1px solid #fff;
+        }
+        .play-indicator {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            z-index: 5;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .page-view {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #000; z-index: 100;
+            box-sizing: border-box; overflow-y: auto;
+        }
+
+        #profile-view {
+            padding: 20px;
+            padding-top: 60px;
+        }
+        #profile-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        #profile-pic {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        #profile-display-name {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 15px 0 5px 0;
+        }
+        #profile-username {
+            color: #aaa;
+            margin: 0 0 15px 0;
+        }
+        #profile-description {
+            font-size: 16px;
+        }
+
+        #user-videos-list {
+            border-top: 1px solid #333;
+        }
+        .video-list-item {
+            padding: 15px 10px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .video-list-item:hover {
+            background-color: #111;
+        }
+        
+        .back-button { position: absolute; top: 60px; left: 20px; cursor: pointer; font-size: 28px; z-index: 110; }
+        
+        #search-container { padding: 20px; padding-top: 60px; }
+        
+        .create-account-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            background-color: #007aff;
+            color: #fff;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #222;
+            color: #fff;
+            font-size: 16px;
+        }
+        #search-results-container h3 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        
+        .profile-card { display: flex; align-items: center; padding: 10px; cursor: pointer; border-bottom: 1px solid #222; }
+        .profile-card:hover { background-color: #111; }
+        .profile-card img { width: 60px; height: 60px; border-radius: 50%; margin-right: 15px; }
+        .profile-card-info h3 { margin: 0; font-size: 18px; }
+        .profile-card-info p { margin: 5px 0 0 0; color: #aaa; }
+        
+        .verified-check {
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+        #profile-display-name .verified-check,
+        .profile-card-info .verified-check {
+            width: 16px;
+            height: 16px;
+        }
+        .video-info .verified-check {
+            width: 14px;
+            height: 14px;
+            border: none;
+            border-radius: 0;
+            margin-left: 4px;
+        }
+        .ad-tag {
+            background-color: #ffd700;
+            color: #000;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div id="splash-screen">
+        <img src="https://raw.githubusercontent.com/bananaskug/sparkvids/main/sparklogo.png" alt="Spark Logo">
+    </div>
+
+    <div id="app">
+        <nav>
+            <a id="home-btn" class="nav-icon"><span class="material-symbols-rounded">home</span></a>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLScw3CotIdNsR0yw4JGptqNqrFXlyo_AHo5lFI0sxbpJzWXp7w/viewform" target="_blank" class="nav-icon"><span class="material-symbols-rounded">add_circle</span></a>
+            <a id="search-btn" class="nav-icon"><span class="material-symbols-rounded">search</span></a>
+        </nav>
+        <div class="video-container" id="video-container"></div>
+        
+        <div id="profile-view" class="page-view">
+            <span class="back-button material-symbols-rounded">arrow_back</span>
+            <div id="profile-header">
+                <img id="profile-pic" src="" alt="Profile Picture">
+                <h2 id="profile-display-name"></h2>
+                <p id="profile-username"></p>
+                <p id="profile-description"></p>
+            </div>
+            <div id="user-videos-list"></div>
+        </div>
+
+        <div id="search-view" class="page-view">
+             <div id="search-container">
+                <input type="text" id="search-input" placeholder="Search for videos and users...">
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSfW1EF1UsyZ3zC54gDvVc6Kd2O5m0H5KbUBFu3Yll4l5ElbKA/viewform?usp=dialog" target="_blank" id="create-account-btn" class="create-account-btn">Create an Account</a>
+                <div id="search-results-container"></div>
+             </div>
+        </div>
+        
+        <div id="single-video-view" class="page-view"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script>
+        const googleSheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTtqDS496jHYz2puSDm9RWCOZYXmWs5DqhDQ9TZjkN8qs7p2DO3kmm4ux2T0wOdpkIJOXQQP95e0jnZ/pub?output=csv';
+        
+        // --- ACCOUNTS HERE ---
+        const users = {
+            'taj': { 
+                password: 'nullified', 
+                displayName: 'Taj', 
+                profilePic: 'https://raw.githubusercontent.com/bananaskug/sparkvids/main/%40taj-pfp.png',
+                description: 'Guahh',
+                verified: true
+            },
+            'guahh': {
+                password: 'nullified',
+                displayName: 'Guahh',
+                profilePic: 'https://raw.githubusercontent.com/bananaskug/sparkvids/main/%40guahh-pfp.png',
+                description: 'Australian Technology Company',
+                verified: true
+            }
+        };
+        const defaultUser = { displayName: 'No One', profilePic: 'https://via.placeholder.com/150/808080/FFFFFF?Text=N' };
+
+        const videoContainer = document.getElementById('video-container');
+        const profileView = document.getElementById('profile-view');
+        const searchView = document.getElementById('search-view');
+        const singleVideoView = document.getElementById('single-video-view');
+        const homeBtn = document.getElementById('home-btn');
+        const searchBtn = document.getElementById('search-btn');
+        const searchInput = document.getElementById('search-input');
+        let allVideos = [];
+        
+        function getDirectVideoUrl(url) {
+            if (!url) return '';
+            return url.split(',')[0].trim();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const splashScreen = document.getElementById('splash-screen');
+            setTimeout(() => {
+                splashScreen.classList.add('hidden');
+                setTimeout(() => {
+                    splashScreen.style.display = 'none';
+                }, 500);
+            }, 1500);
+
+            Papa.parse(googleSheetUrl, {
+                download: true, header: true, skipEmptyLines: true,
+                complete: (results) => {
+                    allVideos = results.data;
+                    displayVideos(allVideos);
+                },
+                error: (error) => { console.error("Error fetching or parsing CSV:", error); alert("Could not load video data."); }
+            });
+            
+            homeBtn.classList.add('active');
+            
+            document.querySelector('#profile-view .back-button').addEventListener('click', () => showView(searchView));
+        });
+
+        function showView(viewToShow) {
+            if (singleVideoView.style.display !== 'none') {
+                const videoToStop = singleVideoView.querySelector('video');
+                if (videoToStop) {
+                    videoToStop.pause();
+                    videoToStop.src = ''; 
+                }
+            }
+
+            [videoContainer, profileView, searchView, singleVideoView].forEach(v => v.style.display = 'none');
+            if (viewToShow) viewToShow.style.display = 'block';
+
+            homeBtn.classList.remove('active');
+            searchBtn.classList.remove('active');
+
+            if (viewToShow === videoContainer) {
+                homeBtn.classList.add('active');
+            } else if (viewToShow === searchView) {
+                searchBtn.classList.add('active');
+            }
+        }
+        
+        homeBtn.addEventListener('click', () => showView(videoContainer));
+        searchBtn.addEventListener('click', () => {
+            displaySearchResults('');
+            document.getElementById('create-account-btn').style.display = 'block';
+            showView(searchView);
+        });
+        searchInput.addEventListener('input', () => displaySearchResults(searchInput.value));
+
+        function displayVideos(videoData) {
+            videoContainer.innerHTML = ''; 
+            const shuffledVideos = [...videoData].sort(() => Math.random() - 0.5);
+
+            shuffledVideos.forEach(video => {
+                if (video.Video && video.Video.trim() !== '') {
+                    const user = getUser(video['Guahh Username'], video['Guahh Pass']);
+                    videoContainer.appendChild(createVideoPlayer(video, user));
+                }
+            });
+            setupIntersectionObserver();
+        }
+        
+        function getUser(username, password) {
+            const cleanPass = password ? password.split(',')[0].trim() : '';
+            return (users[username] && users[username].password === cleanPass) ? { username, ...users[username] } : { username: 'no-one', ...defaultUser };
+        }
+
+        function createVideoPlayer(video, user) {
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'video-player';
+            
+            const spinner = document.createElement('div');
+            spinner.className = 'loading-spinner';
+            const playIndicator = document.createElement('div');
+            playIndicator.className = 'play-indicator';
+            playIndicator.innerHTML = `<span class="material-symbols-rounded" style="font-size: 40px;">play_arrow</span>`;
+
+            const videoTag = document.createElement('video');
+            videoTag.src = getDirectVideoUrl(video.Video);
+            videoTag.loop = true; 
+            videoTag.playsInline = true; 
+            videoTag.disableRemotePlayback = true;
+            videoTag.muted = true;
+            
+            videoTag.addEventListener('canplay', () => { spinner.style.display = 'none'; videoTag.classList.add('loaded'); });
+            
+            videoTag.addEventListener('error', (e) => {
+                console.warn("Could not load video, removing from feed:", videoTag.src);
+                playerDiv.remove();
+            });
+
+            playerDiv.addEventListener('click', (e) => {
+                 if (e.target.closest('.user-link')) return;
+
+                 if (videoTag.paused) {
+                     videoTag.play();
+                     playIndicator.style.opacity = '0';
+                 } else {
+                     videoTag.pause();
+                     playIndicator.style.opacity = '1';
+                 }
+            });
+
+            let speedUpTimeout = null;
+
+            const startHold = (e) => {
+                if (e.target.closest('.user-link')) return;
+
+                speedUpTimeout = setTimeout(() => {
+                    videoTag.playbackRate = 2.0;
+                }, 600);
+            };
+
+            const endHold = () => {
+                clearTimeout(speedUpTimeout);
+                videoTag.playbackRate = 1.0;
+            };
+
+            playerDiv.addEventListener('mousedown', startHold);
+            playerDiv.addEventListener('mouseup', endHold);
+            playerDiv.addEventListener('mouseleave', endHold);
+
+            playerDiv.addEventListener('touchstart', startHold, { passive: true });
+            playerDiv.addEventListener('touchend', endHold);
+            playerDiv.addEventListener('touchcancel', endHold);
+
+            const videoInfo = document.createElement('div');
+            videoInfo.className = 'video-info';
+            
+            const titleContainer = document.createElement('div');
+            titleContainer.className = 'video-info-title';
+            
+            if (video['Advertisment?'] && video['Advertisment?'].trim().toLowerCase() === 'yes') {
+                const adTag = document.createElement('span');
+                adTag.className = 'ad-tag';
+                adTag.textContent = 'AD';
+                titleContainer.appendChild(adTag);
+            }
+
+            const title = document.createElement('h3');
+            title.textContent = video.Title;
+            titleContainer.appendChild(title);
+            videoInfo.appendChild(titleContainer);
+
+            if (user.username !== 'no-one') {
+                const userLink = document.createElement('a');
+                userLink.href = '#';
+                userLink.className = 'user-link';
+                userLink.onclick = (e) => { e.preventDefault(); showProfile(user.username); };
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = user.displayName;
+                userLink.appendChild(nameSpan);
+
+                if (user.verified) {
+                    const verifiedBadge = document.createElement('img');
+                    verifiedBadge.src = 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg';
+                    verifiedBadge.className = 'verified-check';
+                    userLink.appendChild(verifiedBadge);
+                }
+                
+                const userPic = document.createElement('img');
+                userPic.src = user.profilePic;
+                userLink.appendChild(userPic);
+                
+                videoInfo.appendChild(userLink);
+            }
+
+            playerDiv.appendChild(spinner);
+            playerDiv.appendChild(playIndicator);
+            playerDiv.appendChild(videoTag);
+            playerDiv.appendChild(videoInfo);
+            
+            return playerDiv;
+        }
+
+        function setupIntersectionObserver() {
+            const options = { root: videoContainer, threshold: 0.8 };
+            const callback = (entries) => {
+                entries.forEach(entry => {
+                    const video = entry.target.querySelector('video');
+                    const playIndicator = entry.target.querySelector('.play-indicator');
+                    
+                    if (entry.isIntersecting) {
+                        playIndicator.style.opacity = '0';
+                        video.muted = false;
+                        const playPromise = video.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => {
+                                console.log("Autoplay with sound was prevented.");
+                                playIndicator.style.opacity = '1';
+                            });
+                        }
+                    } else {
+                        video.pause();
+                        video.muted = true;
+                    }
+                });
+            };
+            const observer = new IntersectionObserver(callback, options);
+            document.querySelectorAll('.video-player').forEach(player => observer.observe(player));
+        }
+        
+        function showProfile(username) {
+            if (!username || username === 'no-one') return; 
+            const user = users[username];
+            if (!user) return;
+            
+            document.getElementById('profile-pic').src = user.profilePic;
+            const dn = document.getElementById('profile-display-name');
+            dn.innerHTML = '';
+            dn.appendChild(document.createTextNode(user.displayName));
+
+            if (user.verified) {
+                const verifiedBadge = document.createElement('img');
+                verifiedBadge.src = 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg';
+                verifiedBadge.className = 'verified-check';
+                dn.appendChild(verifiedBadge);
+            }
+
+            document.getElementById('profile-username').textContent = `@${username}`;
+            document.getElementById('profile-description').textContent = user.description;
+            
+            const videoList = document.getElementById('user-videos-list');
+            videoList.innerHTML = ''; 
+            
+            const userVideos = allVideos.filter(v => v['Guahh Username'] === username);
+            
+            userVideos.reverse().forEach(video => {
+                if (video.Video && video.Video.trim() !== '') {
+                    const listItem = document.createElement('div');
+                    listItem.className = 'video-list-item';
+                    listItem.textContent = video.Title || 'Untitled Video';
+                    listItem.onclick = () => showSingleVideo(video, username);
+                    videoList.appendChild(listItem);
+                }
+            });
+            
+            showView(profileView);
+        }
+
+        function showSingleVideo(videoData, username) {
+            const user = getUser(videoData['Guahh Username'], videoData['Guahh Pass']);
+            singleVideoView.innerHTML = '';
+
+            const backBtn = document.createElement('span');
+            backBtn.className = 'back-button material-symbols-rounded';
+            backBtn.textContent = 'arrow_back';
+            backBtn.onclick = () => showProfile(username);
+            
+            const videoPlayer = createVideoPlayer(videoData, user);
+            const videoTag = videoPlayer.querySelector('video');
+            videoTag.muted = false;
+            
+            const playPromise = videoTag.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => console.log("Autoplay was prevented."));
+            }
+
+            singleVideoView.appendChild(backBtn);
+            singleVideoView.appendChild(videoPlayer);
+            showView(singleVideoView);
+        }
+
+        function displaySearchResults(query) {
+            const container = document.getElementById('search-results-container');
+            const lowerCaseQuery = query.toLowerCase().trim();
+            container.innerHTML = '';
+            
+            const createBtn = document.getElementById('create-account-btn');
+            if (lowerCaseQuery === '') {
+                createBtn.style.display = 'block';
+            } else {
+                createBtn.style.display = 'none';
+            }
+
+            // --- Search Users ---
+            const matchingUsers = Object.entries(users).filter(([username, user]) => 
+                username.toLowerCase().includes(lowerCaseQuery) || user.displayName.toLowerCase().includes(lowerCaseQuery)
+            );
+
+            if (matchingUsers.length > 0) {
+                const usersHeader = document.createElement('h3');
+                usersHeader.textContent = 'Users';
+                container.appendChild(usersHeader);
+                matchingUsers.forEach(([username, user]) => {
+                    const card = document.createElement('div');
+                    card.className = 'profile-card';
+                    card.onclick = () => showProfile(username);
+                    const pic = document.createElement('img');
+                    pic.src = user.profilePic;
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'profile-card-info';
+                    const dn = document.createElement('h3');
+                    dn.appendChild(document.createTextNode(user.displayName));
+                    
+                    if (user.verified) {
+                        const verifiedBadge = document.createElement('img');
+                        verifiedBadge.src = 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Twitter_Verified_Badge.svg';
+                        verifiedBadge.className = 'verified-check';
+                        dn.appendChild(verifiedBadge);
+                    }
+
+                    const un = document.createElement('p');
+                    un.textContent = `@${username}`;
+                    infoDiv.appendChild(dn); infoDiv.appendChild(un);
+                    card.appendChild(pic); card.appendChild(infoDiv);
+                    container.appendChild(card);
+                });
+            }
+
+            // --- Search Videos ---
+            const matchingVideos = allVideos.filter(video => 
+                video.Title && video.Title.toLowerCase().includes(lowerCaseQuery)
+            );
+
+            if (matchingVideos.length > 0) {
+                const videosHeader = document.createElement('h3');
+                videosHeader.textContent = 'Videos';
+                container.appendChild(videosHeader);
+                matchingVideos.forEach(video => {
+                    if (video.Video && video.Video.trim() !== '') {
+                        const listItem = document.createElement('div');
+                        listItem.className = 'video-list-item';
+                        listItem.textContent = video.Title || 'Untitled Video';
+                        listItem.onclick = () => showSingleVideo(video, video['Guahh Username']);
+                        container.appendChild(listItem);
+                    }
+                });
+            }
+            
+            if (matchingUsers.length === 0 && matchingVideos.length === 0 && lowerCaseQuery !== '') {
+                const noResults = document.createElement('p');
+                noResults.textContent = 'No results found.';
+                noResults.style.textAlign = 'center';
+                noResults.style.color = '#aaa';
+                container.appendChild(noResults);
+            }
+        }
+    </script>
+</body>
+</html>

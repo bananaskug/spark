@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spark</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
+<link rel="icon" href="https://raw.githubusercontent.com/bananaskug/sparkvids/main/sparklogo.png">
+<style>
+  body { background:#000; color:#fff; font-family:Arial,sans-serif; margin:0; padding:20px; }
+  .form { max-width:400px; margin:100px auto; padding:20px; background:#111; border-radius:8px; }
+  input, textarea, button { width:100%; margin:10px 0; padding:10px; border-radius:6px; border:none; }
+  input, textarea { background:#222; color:#fff; }
+  button { background:#007aff; color:#fff; cursor:pointer; }
+  .nav-icon { cursor:pointer; font-size:28px; color: #fff; text-decoration: none;}
+  nav { display:flex; justify-content:space-around; padding:10px; background:#111; border-bottom:1px solid #333; position:fixed; top:0; left:0; right:0; z-index:10; }
+  nav a { color:#fff; text-decoration:none; font-size:28px; cursor:pointer; }
+</style>
+</head>
+<body>
+<nav>
+    <a href="index.html" class="nav-icon material-symbols-rounded">home</a>
+    <a href="upload.html" class="nav-icon material-symbols-rounded">add_circle</a>
+    <a href="account.html" class="nav-icon material-symbols-rounded">account_circle</a>
+</nav>
+<div class="form">
+  <h2>Upload Video</h2>
+  <input type="file" id="video-file" accept="video/*">
+  <input type="text" id="video-title" placeholder="Title (optional)">
+  <textarea id="video-desc" placeholder="Description (optional)"></textarea>
+  <button id="upload-video">Upload</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDrhxEA1JT513op42cJHnoWx7nvlpmcMwE",
+  authDomain: "spark-e4543.firebaseapp.com",
+  projectId: "spark-e4543",
+  storageBucket: "spark-e4543.firebasestorage.app",
+  messagingSenderId: "26655443387",
+  appId: "1:26655443387:web:338dc235c607650a389c9e"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+onAuthStateChanged(auth, user => currentUser = user);
+
+document.getElementById("upload-video").onclick = async () => {
+  const file = document.getElementById("video-file").files[0];
+  const title = document.getElementById("video-title").value;
+  const desc = document.getElementById("video-desc").value;
+
+  if(!currentUser) return alert("You must be logged in!");
+  if(!file) return alert("Choose a file!");
+
+  // Upload to Cloudinary
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "unsigned_preset"); // your preset
+
+  const cloudRes = await fetch("https://api.cloudinary.com/v1_1/dy078qdw0/video/upload", {
+    method:"POST", body:formData
+  });
+  const cloudData = await cloudRes.json();
+  const videoURL = cloudData.secure_url;
+
+  // Save metadata in Firestore
+  await addDoc(collection(db,"videos"),{
+    videoURL,
+    title,
+    description: desc,
+    uploaderUsername: currentUser.displayName,
+    uploaderEmail: currentUser.email,
+    createdAt: serverTimestamp()
+  });
+
+  alert("Video uploaded successfully!");
+  document.getElementById("video-file").value="";
+  document.getElementById("video-title").value="";
+  document.getElementById("video-desc").value="";
+};
+</script>
+</body>
+</html>

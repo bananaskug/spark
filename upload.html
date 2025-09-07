@@ -4,24 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spark</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
 <link rel="icon" href="https://raw.githubusercontent.com/bananaskug/sparkvids/main/sparklogo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
 <style>
+  nav {
+    display:flex; justify-content:space-around; padding:10px;
+    background:#111; border-bottom:1px solid #333;
+    position:fixed; top:0; left:0; right:0; z-index:10;
+  }
+  nav a { color:#fff; text-decoration:none; font-size:28px; cursor:pointer; }
   body { background:#000; color:#fff; font-family:Arial,sans-serif; margin:0; padding:20px; }
   .form { max-width:400px; margin:100px auto; padding:20px; background:#111; border-radius:8px; }
   input, textarea, button { width:100%; margin:10px 0; padding:10px; border-radius:6px; border:none; }
   input, textarea { background:#222; color:#fff; }
   button { background:#007aff; color:#fff; cursor:pointer; }
-  .nav-icon { cursor:pointer; font-size:28px; color: #fff; text-decoration: none;}
-  nav { display:flex; justify-content:space-around; padding:10px; background:#111; border-bottom:1px solid #333; position:fixed; top:0; left:0; right:0; z-index:10; }
-  nav a { color:#fff; text-decoration:none; font-size:28px; cursor:pointer; }
+  #progress-container { display:none; margin-top:15px; background:#333; border-radius:6px; overflow:hidden; }
+  #progress-bar { width:0%; height:20px; background:#007aff; text-align:center; font-size:12px; color:#fff; }
 </style>
 </head>
 <body>
-<nav>
-    <a href="index.html" class="nav-icon material-symbols-rounded">home</a>
-    <a href="upload.html" class="nav-icon material-symbols-rounded">add_circle</a>
-    <a href="account.html" class="nav-icon material-symbols-rounded">account_circle</a>
+  <nav>
+  <a href="index.html" class="nav-icon material-symbols-rounded">home</a>
+  <a href="upload.html" class="nav-icon material-symbols-rounded">add_circle</a>
+  <a href="account.html" class="nav-icon material-symbols-rounded">account_circle</a>
 </nav>
 <div class="form">
   <h2>Upload Video</h2>
@@ -29,6 +34,7 @@
   <input type="text" id="video-title" placeholder="Title (optional)">
   <textarea id="video-desc" placeholder="Description (optional)"></textarea>
   <button id="upload-video">Upload</button>
+  <div id="progress-container"><div id="progress-bar">0%</div></div>
 </div>
 
 <script type="module">
@@ -57,35 +63,61 @@ document.getElementById("upload-video").onclick = async () => {
   const title = document.getElementById("video-title").value;
   const desc = document.getElementById("video-desc").value;
 
-  if(!currentUser) return alert("You must be logged in!");
-  if(!file) return alert("Choose a file!");
+  if(!currentUser) { showStatus("Please log in first!"); return; }
+  if(!file) { showStatus("Choose a file first!"); return; }
 
-  // Upload to Cloudinary
+  const progressContainer=document.getElementById("progress-container");
+  const progressBar=document.getElementById("progress-bar");
+  progressContainer.style.display="block";
+  progressBar.style.width="0%"; progressBar.textContent="0%";
+
+  // Upload to Cloudinary with progress
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("upload_preset", "unsigned_preset"); // your preset
+  formData.append("upload_preset", "unsigned_preset");
 
-  const cloudRes = await fetch("https://api.cloudinary.com/v1_1/dy078qdw0/video/upload", {
-    method:"POST", body:formData
-  });
-  const cloudData = await cloudRes.json();
-  const videoURL = cloudData.secure_url;
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "https://api.cloudinary.com/v1_1/dy078qdw0/video/upload", true);
 
-  // Save metadata in Firestore
-  await addDoc(collection(db,"videos"),{
-    videoURL,
-    title,
-    description: desc,
-    uploaderUsername: currentUser.displayName,
-    uploaderEmail: currentUser.email,
-    createdAt: serverTimestamp()
-  });
+  xhr.upload.onprogress = (e)=>{
+    if(e.lengthComputable){
+      const percent = Math.round((e.loaded/e.total)*100);
+      progressBar.style.width = percent+"%";
+      progressBar.textContent = percent+"%";
+    }
+  };
 
-  alert("Video uploaded successfully!");
-  document.getElementById("video-file").value="";
-  document.getElementById("video-title").value="";
-  document.getElementById("video-desc").value="";
+  xhr.onload = async ()=>{
+    if(xhr.status===200){
+      const cloudData=JSON.parse(xhr.responseText);
+      const videoURL=cloudData.secure_url;
+
+      await addDoc(collection(db,"pendingVideos"),{
+        videoURL,
+        title,
+        description: desc,
+        uploaderUsername: currentUser.displayName,
+        uploaderEmail: currentUser.email,
+        createdAt: serverTimestamp()
+      });
+
+      progressBar.style.width="100%";
+      progressBar.textContent="Uploaded!\nThe video is now being reviewed by our moderators.";
+    } else {
+      showStatus("Upload failed. Try again.");
+    }
+  };
+
+  xhr.send(formData);
 };
+
+function showStatus(msg){
+  const bar=document.getElementById("progress-bar");
+  const container=document.getElementById("progress-container");
+  container.style.display="block";
+  bar.style.width="100%";
+  bar.textContent=msg;
+}
 </script>
 </body>
 </html>

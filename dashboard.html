@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spark - Review</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
+<link rel="icon" href="https://raw.githubusercontent.com/bananaskug/sparkvids/main/sparklogo.png">
+<style>
+  body { background:#111; color:#fff; font-family:Arial,sans-serif; margin:0; padding:80px 20px 20px; }
+  nav {
+    display:flex; justify-content:space-around; padding:10px;
+    background:#111; border-bottom:1px solid #333;
+    position:fixed; top:0; left:0; right:0; z-index:10;
+  }
+  nav a { color:#fff; text-decoration:none; font-size:28px; cursor:pointer; }
+  table { width:100%; border-collapse: collapse; margin-top:20px; }
+  th, td { padding:10px; border-bottom:1px solid #333; text-align:left; }
+  a { color:#4da3ff; text-decoration:none; }
+  button {
+    margin:0 5px; padding:6px 12px; border:none; border-radius:6px;
+    cursor:pointer; font-weight:bold;
+  }
+  .approve { background:#28a745; color:#fff; }
+  .reject { background:#dc3545; color:#fff; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-icon material-symbols-rounded">home</a>
+  <a href="upload.html" class="nav-icon material-symbols-rounded">add_circle</a>
+  <a href="account.html" class="nav-icon material-symbols-rounded">account_circle</a>
+</nav>
+
+<h2>Pending Video Reviews</h2>
+<table>
+  <thead>
+    <tr><th>Video</th><th>Title</th><th>Description</th><th>Uploader</th><th>Actions</th></tr>
+  </thead>
+  <tbody id="video-list"></tbody>
+</table>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDrhxEA1JT513op42cJHnoWx7nvlpmcMwE",
+  authDomain: "spark-e4543.firebaseapp.com",
+  projectId: "spark-e4543",
+  storageBucket: "spark-e4543.firebasestorage.app",
+  messagingSenderId: "26655443387",
+  appId: "1:26655443387:web:338dc235c607650a389c9e"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const allowedReviewers = ["theguahh@gmail.com", "gwishyman@gmail.com"].map(e=>e.toLowerCase().trim());
+
+onAuthStateChanged(auth, async user=>{
+  if(!user || !allowedReviewers.includes(user.email.toLowerCase().trim())){
+    document.body.innerHTML=`<h2 style="margin-top:100px;">Access Denied</h2>`;
+    return;
+  }
+
+  const snap = await getDocs(collection(db,"pendingVideos"));
+  const tbody=document.getElementById("video-list");
+
+  snap.forEach(docSnap=>{
+    const v=docSnap.data();
+    const row=document.createElement("tr");
+    row.innerHTML=`
+      <td><a href="${v.videoURL}" target="_blank">Watch</a></td>
+      <td>${v.title||"Untitled"}</td>
+      <td>${v.description||""}</td>
+      <td>${v.uploaderUsername||v.uploaderEmail}</td>
+      <td>
+        <button class="approve">Approve</button>
+        <button class="reject">Reject</button>
+      </td>
+    `;
+
+    // ✅ Button actions
+    row.querySelector(".approve").onclick=async()=>{
+      await addDoc(collection(db,"videos"),v); // move to main feed
+      await deleteDoc(doc(db,"pendingVideos",docSnap.id));
+      row.remove();
+    };
+
+    row.querySelector(".reject").onclick=async()=>{
+      await deleteDoc(doc(db,"pendingVideos",docSnap.id));
+      row.remove();
+    };
+
+    tbody.appendChild(row);
+  });
+});
+</script>
+</body>
+</html>

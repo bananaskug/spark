@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spark - Account</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
-
 <link rel="icon" href="https://raw.githubusercontent.com/bananaskug/sparkvids/main/sparklogo.png">
 <style>
   body { background:#000; color:#fff; font-family:Arial,sans-serif; margin:0; padding:20px; }
@@ -17,6 +16,20 @@
   .nav-icon { cursor:pointer; font-size:28px; color: #fff; text-decoration: none;}
   nav { display:flex; justify-content:space-around; padding:10px; background:#111; border-bottom:1px solid #333; position:fixed; top:0; left:0; right:0; z-index:10; }
   nav a { color:#fff; text-decoration:none; font-size:28px; cursor:pointer; }
+
+  /* Moderator button */
+  #mod-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: url('https://raw.githubusercontent.com/bananaskug/sparkvids/refs/heads/main/darkmoderator.png') no-repeat center/contain;
+    border: none;
+    cursor: pointer;
+    display: none;
+    z-index: 50;
+  }
 </style>
 </head>
 <body>
@@ -36,6 +49,9 @@
 </div>
 <button id="logout">Logout</button>
 <p id="user-info"></p>
+
+<!-- Moderator Button -->
+<button id="mod-btn" title="Moderator Panel"></button>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
@@ -62,6 +78,7 @@ const loginBtn = document.getElementById("login");
 const logoutBtn = document.getElementById("logout");
 const authSection = document.getElementById("auth-section");
 const userInfo = document.getElementById("user-info");
+const modBtn = document.getElementById("mod-btn");
 
 // Sign Up
 signupBtn.onclick = async () => {
@@ -69,14 +86,11 @@ signupBtn.onclick = async () => {
   try {
     const userCred = await createUserWithEmailAndPassword(auth, email.value, password.value);
     await updateProfile(userCred.user, { displayName: username.value });
-
-    // Save user in Firestore
     await setDoc(doc(db, "users", userCred.user.uid), {
       email: email.value,
       username: username.value,
       createdAt: new Date()
     });
-
     alert("Signed up as " + username.value);
   } catch(err) {
     alert(err.message);
@@ -97,10 +111,23 @@ onAuthStateChanged(auth, user => {
     authSection.style.display = "none";
     logoutBtn.style.display = "block";
     userInfo.textContent = "Logged in as " + (user.displayName || user.email);
+
+    // Show moderator button if email matches
+    if(user.email === "theguahh@gmail.com"){
+      modBtn.style.display = "block";
+      modBtn.onclick = () => {
+        // Add your moderator panel action here
+        window.location.href = "dashboard.html";
+      };
+    } else {
+      modBtn.style.display = "none";
+    }
+
   } else {
     authSection.style.display = "block";
     logoutBtn.style.display = "none";
     userInfo.textContent = "Not logged in";
+    modBtn.style.display = "none";
   }
 });
 </script>

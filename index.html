@@ -1,4 +1,4 @@
-async function loadComments(videoId, container) {<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -10,45 +10,49 @@ async function loadComments(videoId, container) {<!DOCTYPE html>
   body { margin:0; padding:0; background:#000; color:#fff; font-family:Arial,sans-serif; overflow:hidden; }
   nav { display:flex; justify-content:space-around; padding:10px; background:#111; border-bottom:1px solid #333; position:fixed; top:0; left:0; right:0; z-index:10; }
   nav a { color:#fff; text-decoration:none; font-size:28px; cursor:pointer; }
-  #video-feed { padding-top:60px; height:100vh; overflow-y:auto; scroll-behavior:smooth; display:flex; flex-direction:column; align-items:center; gap:20px; }
+
+  #video-feed {
+    padding-top:60px;
+    height:100vh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+  }
+
   .video-container {
     position: relative;
     width: 100%;
-    max-width: 1080px;
-    height: 1920px;
-    background: #000;
-    border-radius: 10px;
+    height: 100vh;
+    scroll-snap-align: start;
     overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background:#000;
   }
+
   .video-container video {
-    width: 100%;
-    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     object-fit: contain;
-    background: #000;
+    background:#000;
   }
-  .video-gradient {
-    position:absolute;
-    bottom:0;
-    left:0;
-    right:0;
-    height:250px;
-    background:linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0));
-    pointer-events:none;
-  }
+
   .video-info {
     position: absolute;
-    bottom: 100px;
+    bottom: 80px;
     left: 20px;
-    right: 100px;
     color: #fff;
-    text-shadow: 0px 0px 8px rgba(0,0,0,0.9);
-    z-index:5;
+    text-shadow: 0 0 8px rgba(0,0,0,0.9);
+    z-index: 5;
   }
-  .video-info h3 { margin: 0; font-size: 20px; font-weight: bold; }
-  .video-info p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; }
-  .uploader { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .video-info h3 { margin:0; font-size:20px; font-weight:bold; }
+  .video-info p { margin:5px 0 0; font-size:14px; opacity:0.9; }
+
+  .uploader { display:flex; align-items:center; gap:10px; margin-bottom:10px; cursor:pointer; }
   .uploader img { width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid #fff; }
   .uploader span { font-weight:bold; font-size:16px; }
+
   .sidebar {
     position:absolute;
     bottom:120px;
@@ -69,22 +73,10 @@ async function loadComments(videoId, container) {<!DOCTYPE html>
     flex-direction:column;
     align-items:center;
     gap:5px;
+    text-shadow: 1px 1px 3px #000; /* black shadow */
   }
   .sidebar span { font-size:14px; }
-  #unmute-btn {
-    position:fixed;
-    bottom:20px;
-    right:20px;
-    padding:15px 25px;
-    font-size:16px;
-    background:#007aff;
-    color:#fff;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    z-index:20;
-  }
-  /* Comments modal */
+
   #comments-modal {
     position: fixed;
     bottom: 0; left: 0; right: 0;
@@ -95,46 +87,29 @@ async function loadComments(videoId, container) {<!DOCTYPE html>
     flex-direction: column;
     z-index: 30;
   }
-  #comments-header {
-    padding: 10px;
-    text-align: center;
-    border-bottom: 1px solid #333;
-    font-weight: bold;
+  #comments-header { padding: 10px; text-align: center; border-bottom: 1px solid #333; font-weight: bold; }
+  #comments-list { flex:1; overflow-y:auto; padding:10px; }
+  .comment { display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid #222; }
+  .comment img { width:32px; height:32px; border-radius:50%; cursor:pointer; }
+  .comment-content { flex:1; }
+  .comment strong { color:#fff; cursor:pointer; }
+  .comment small { color:#aaa; font-size:12px; display:block; margin-top:2px; }
+  #comment-input-area { display:flex; padding:10px; border-top:1px solid #333; }
+  #comment-input { flex:1; padding:8px; border-radius:6px; border:none; background:#222; color:#fff; }
+  #send-comment { margin-left:10px; background:#007aff; border:none; border-radius:6px; padding:8px 12px; color:#fff; cursor:pointer; }
+
+  #tap-overlay {
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.8);
+    color:#fff;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    font-size:22px;
+    z-index:50;
+    cursor:pointer;
   }
-  #comments-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px;
-  }
-  .comment {
-    padding: 5px 0;
-    border-bottom: 1px solid #222;
-  }
-  .comment strong { color: #fff; }
-  .comment small { color: #aaa; font-size: 12px; }
-  #comment-input-area {
-    display: flex;
-    padding: 10px;
-    border-top: 1px solid #333;
-  }
-  #comment-input {
-    flex: 1;
-    padding: 8px;
-    border-radius: 6px;
-    border: none;
-    background: #222;
-    color: #fff;
-  }
-  #send-comment {
-    margin-left: 10px;
-    background: #007aff;
-    border: none;
-    border-radius: 6px;
-    padding: 8px 12px;
-    color: #fff;
-    cursor: pointer;
-  }
-  .nav-icon { cursor:pointer; font-size:28px; color: #fff; text-decoration: none;}
 </style>
 </head>
 <body>
@@ -145,11 +120,9 @@ async function loadComments(videoId, container) {<!DOCTYPE html>
 </nav>
 
 <div id="video-feed"></div>
-<button id="unmute-btn">Unmute</button>
 
-<!-- Comments modal -->
 <div id="comments-modal">
-  <div id="comments-header">Comments</div>
+  <div id="comments-header">Comments <button onclick="document.getElementById('comments-modal').style.display='none';" style="float:right;background:none;border:none;color:#fff;cursor:pointer;">✕</button></div>
   <div id="comments-list"></div>
   <div id="comment-input-area">
     <input id="comment-input" placeholder="Add a comment..." />
@@ -157,9 +130,11 @@ async function loadComments(videoId, container) {<!DOCTYPE html>
   </div>
 </div>
 
+<div id="tap-overlay">⏸</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, increment, arrayUnion, arrayRemove, addDoc, query, orderBy, getDocs as getDocsSub } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, increment, arrayUnion, arrayRemove, addDoc, query, orderBy, getDocs as getDocsSub, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -175,11 +150,20 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 let currentUser = null;
-onAuthStateChanged(auth, user=>{
-  currentUser = user;
-});
+onAuthStateChanged(auth, user => currentUser = user);
 
 let openVideoId = null;
+
+// Format "time ago"
+function timeAgo(ts){
+  if(!ts) return "";
+  const now = new Date();
+  const sec = Math.floor((now - ts.toDate())/1000);
+  if(sec<60) return `${sec}s ago`;
+  if(sec<3600) return `${Math.floor(sec/60)}m ago`;
+  if(sec<86400) return `${Math.floor(sec/3600)}h ago`;
+  return `${Math.floor(sec/86400)}d ago`;
+}
 
 async function loadFYP() {
   const querySnap = await getDocs(collection(db,"videos"));
@@ -194,34 +178,39 @@ async function loadFYP() {
 
   const feed = document.getElementById("video-feed");
   feed.innerHTML="";
-  videos.forEach((v,index)=>{
+  videos.forEach((v, index) => {
     const container = document.createElement("div");
     container.className = "video-container";
 
-    const vid=document.createElement("video");
-    vid.src=v.videoURL;
-    vid.controls=false;
-    vid.loop=true;
-    vid.muted=true;
-    vid.autoplay=index===0;
-    vid.preload="metadata";
-    vid.addEventListener("click",()=>{ if(vid.paused) vid.play(); else vid.pause(); });
+    const vid = document.createElement("video");
+    vid.src = v.videoURL;
+    vid.controls = false;
+    vid.loop = true;
+    vid.muted = false;
+    vid.autoplay = index===0;
+    vid.preload = "auto";
 
-    const gradient=document.createElement("div");
-    gradient.className="video-gradient";
+    if (index===0) {
+      vid.play().catch(() => {
+        document.getElementById("tap-overlay").style.display="flex";
+      });
+    }
 
-    const info=document.createElement("div");
-    info.className="video-info";
+    const info = document.createElement("div");
+    info.className = "video-info";
     info.innerHTML = `
-      <div class="uploader">
-        <img src="https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(v.uploaderEmail)}" alt="pfp">
+      <div class="uploader" data-user="${v.uploaderUsername}">
+        <img src="https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(v.uploaderUsername)}" alt="pfp">
         <span>@${v.uploaderUsername || "unknown"}</span>
       </div>
       <h3>${v.title || "Untitled"}</h3>
       <p>${v.description || ""}</p>
     `;
 
-    // Sidebar
+    info.querySelector(".uploader").onclick = () => {
+      window.location.href = "user.html?user=" + encodeURIComponent(v.uploaderUsername);
+    };
+
     const sidebar = document.createElement("div");
     sidebar.className = "sidebar";
     sidebar.innerHTML = `
@@ -231,52 +220,39 @@ async function loadFYP() {
       </button>
       <button class="comment-btn material-symbols-rounded">
         chat
-        <span>0</span>
+        <span>${v.commentCount || 0}</span>
       </button>
     `;
 
-    // Likes
     const likeBtn = sidebar.querySelector(".like-btn");
-    likeBtn.onclick = async ()=>{
-      if(!currentUser){ alert("Login to like"); return; }
+    likeBtn.onclick = async () => {
+      if(!currentUser) return;
       const videoRef = doc(db,"videos",v.id);
       if(v.likedBy && v.likedBy.includes(currentUser.email)){
-        await updateDoc(videoRef,{
-          likes: increment(-1),
-          likedBy: arrayRemove(currentUser.email)
-        });
+        await updateDoc(videoRef, { likes: increment(-1), likedBy: arrayRemove(currentUser.email) });
         v.likes--;
         v.likedBy = v.likedBy.filter(e=>e!==currentUser.email);
       }else{
-        await updateDoc(videoRef,{
-          likes: increment(1),
-          likedBy: arrayUnion(currentUser.email)
-        });
+        await updateDoc(videoRef, { likes: increment(1), likedBy: arrayUnion(currentUser.email) });
         v.likes=(v.likes||0)+1;
         v.likedBy=[...(v.likedBy||[]),currentUser.email];
       }
       likeBtn.querySelector("span").textContent=v.likes;
     };
 
-    // Comments
     const commentBtn = sidebar.querySelector(".comment-btn");
-    commentBtn.onclick = ()=>{
-      openComments(v.id);
-    };
+    commentBtn.onclick = ()=>{ openComments(v.id, commentBtn.querySelector("span")); };
 
     container.appendChild(vid);
-    container.appendChild(gradient);
     container.appendChild(info);
     container.appendChild(sidebar);
     feed.appendChild(container);
   });
 
   handleScroll(feed);
-  showUnmute();
 }
 
-// Comments modal logic
-async function openComments(videoId){
+async function openComments(videoId, counterEl){
   openVideoId = videoId;
   const modal=document.getElementById("comments-modal");
   const list=document.getElementById("comments-list");
@@ -286,68 +262,80 @@ async function openComments(videoId){
   const q=query(collection(db,"videos",videoId,"comments"),orderBy("createdAt","asc"));
   const snap=await getDocsSub(q);
   list.innerHTML="";
+  let count=0;
   snap.forEach(docSnap=>{
+    count++;
     const c=docSnap.data();
     const div=document.createElement("div");
     div.className="comment";
-    div.innerHTML=`<strong>@${c.username||"anon"}</strong> ${c.text}<br><small>${c.userEmail}</small>`;
+    div.innerHTML=`
+      <img src="https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(c.username)}" alt="pfp">
+      <div class="comment-content">
+        <strong>@${c.username||"anon"}</strong> ${c.text}
+        <small>${timeAgo(c.createdAt)}</small>
+      </div>
+    `;
+    div.querySelector("img").onclick=()=>{ window.location.href="user.html?user="+encodeURIComponent(c.username); };
+    div.querySelector("strong").onclick=()=>{ window.location.href="user.html?user="+encodeURIComponent(c.username); };
     list.appendChild(div);
   });
+  if(counterEl) counterEl.textContent=count;
+
+  document.getElementById("send-comment").onclick = async () => {
+    if(!currentUser) return;
+    const input=document.getElementById("comment-input");
+    if(!input.value.trim()) return;
+    await addDoc(collection(db,"videos",videoId,"comments"),{
+      text: input.value,
+      username: currentUser.displayName || currentUser.email.split("@")[0],
+      createdAt: serverTimestamp()
+    });
+    input.value="";
+    openComments(videoId, counterEl);
+  };
 }
 
-document.getElementById("send-comment").onclick=async ()=>{
-  if(!currentUser){ alert("Login to comment"); return; }
-  if(!openVideoId) return;
-  const input=document.getElementById("comment-input");
-  const text=input.value.trim();
-  if(!text) return;
-  await addDoc(collection(db,"videos",openVideoId,"comments"),{
-    text,
-    userEmail: currentUser.email,
-    username: currentUser.displayName || currentUser.email.split("@")[0],
-    createdAt: new Date()
-  });
-  input.value="";
-  openComments(openVideoId); // reload
-};
-
+// Scroll handling
 function handleScroll(feed){
   const videos = feed.querySelectorAll("video");
-  let current=null;
-  let scrollTimeout;
-  if(videos.length) current=videos[0];
+  let current = videos[0];
+  videos.forEach(v=>{ if(v!==current){ v.pause(); v.muted=true; } });
 
   function playVideo(video){
     videos.forEach(v=>{
-      if(v===video){ v.currentTime=0; v.play().catch(()=>{}); } else { v.pause(); }
+      if(v===video){
+        v.muted=false;
+        v.play().catch(()=>{});
+      } else {
+        v.pause();
+        v.muted=true;
+
+        // 🔹 Restart when leaving
+        v.currentTime = 0;
+      }
     });
-    current=video;
+    current = video;
   }
 
   feed.addEventListener("scroll",()=>{
-    clearTimeout(scrollTimeout);
-    scrollTimeout=setTimeout(()=>{
-      const center=window.innerHeight/2;
-      let closest=videos[0],minDistance=Infinity;
-      videos.forEach(v=>{
-        const rect=v.getBoundingClientRect();
-        const vc=rect.top+rect.height/2;
-        const dist=Math.abs(center-vc);
-        if(dist<minDistance){ minDistance=dist; closest=v; }
-      });
-      if(current!==closest) playVideo(closest);
-    },50);
+    const center = window.innerHeight/2;
+    let closest = videos[0], minDistance=Infinity;
+    videos.forEach(v=>{
+      const rect=v.getBoundingClientRect();
+      const vc=rect.top+rect.height/2;
+      const dist=Math.abs(center-vc);
+      if(dist<minDistance){ minDistance=dist; closest=v; }
+    });
+    if(current!==closest) playVideo(closest);
   });
 }
 
-function showUnmute(){
-  const btn=document.getElementById("unmute-btn");
-  btn.style.display="block";
-  btn.onclick=()=>{
-    document.querySelectorAll("video").forEach(v=>v.muted=false);
-    btn.style.display="none";
-  };
-}
+// overlay click to unlock audio
+document.getElementById("tap-overlay").addEventListener("click", () => {
+  const firstVid=document.querySelector("video");
+  if(firstVid){ firstVid.muted=false; firstVid.play().catch(()=>{}); }
+  document.getElementById("tap-overlay").style.display="none";
+});
 
 loadFYP();
 </script>

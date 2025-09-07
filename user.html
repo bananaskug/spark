@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spark - Profile</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
+<style>
+  body { margin:0; padding:20px; background:#000; color:#fff; font-family:Arial,sans-serif; }
+  .profile-header { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+  .profile-header img { width:60px; height:60px; border-radius:50%; }
+  .profile-header h1 { margin:0; font-size:24px; display:flex; align-items:center; gap:5px; }
+  .badge { width:16px; height:16px; }
+  .post { margin-bottom:15px; }
+  .post video { width:100%; border-radius:8px; }
+</style>
+</head>
+<body>
+<div id="profile"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDrhxEA1JT513op42cJHnoWx7nvlpmcMwE",
+  authDomain: "spark-e4543.firebaseapp.com",
+  projectId: "spark-e4543",
+  storageBucket: "spark-e4543.firebasestorage.app",
+  messagingSenderId: "26655443387",
+  appId: "1:26655443387:web:338dc235c607650a389c9e"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const params = new URLSearchParams(window.location.search);
+const username = params.get("user");
+if(!username) document.body.innerHTML = "No user specified.";
+
+async function loadProfile(uname){
+  const usersSnap = await getDocs(collection(db,"users"));
+  const user = usersSnap.docs.map(d=>d.data()).find(u=>u.username===uname);
+  if(!user){ document.body.innerHTML="User not found."; return; }
+
+  const container = document.getElementById("profile");
+  container.innerHTML = `
+    <div class="profile-header">
+      <img src="https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(username)}">
+      <h1>${user.username}
+        ${user.isVerified?`<img src="https://raw.githubusercontent.com/bananaskug/sparkvids/refs/heads/main/verifiedbadge.png" class="badge">`:''}
+        ${user.isModerator?`<img src="https://raw.githubusercontent.com/bananaskug/sparkvids/refs/heads/main/darkmoderator.png" class="badge">`:''}
+      </h1>
+    </div>
+  `;
+
+  // Load posts
+  const vidsSnap = await getDocs(collection(db,"videos"));
+  vidsSnap.forEach(v=>{
+    if(v.data().uploaderUsername===uname){
+      const div = document.createElement("div");
+      div.className="post";
+      div.innerHTML = `<video src="${v.data().videoURL}" controls loop muted></video>
+        <p>${v.data().title||"Untitled"}</p>`;
+      container.appendChild(div);
+    }
+  });
+}
+
+loadProfile(username);
+</script>
+</body>
+</html>

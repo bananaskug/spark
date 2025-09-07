@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Spark - Account</title>
+<title>Spark</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
 <link rel="icon" href="https://raw.githubusercontent.com/bananaskug/sparkvids/main/sparklogo.png">
 <style>
@@ -113,7 +113,7 @@ onAuthStateChanged(auth, user => {
     userInfo.textContent = "Logged in as " + (user.displayName || user.email);
 
     // Show moderator button if email matches
-    if(user.email === "theguahh@gmail.com"){
+    if(user.email === "theguahh@gmail.com", "gwishyman@gmail.com"){
       modBtn.style.display = "block";
       modBtn.onclick = () => {
         // Add your moderator panel action here
